@@ -20,11 +20,11 @@ import java.util.Locale;
  */
 
 public class UserMessage {
-    private User mUser;
+    private UserType mUser;
     private String mText;
     private Date mDate;
 
-    public UserMessage(User user, String text, Date date) {
+    public UserMessage(UserType user, String text, Date date) {
         mUser = user;
         mText = text;
         mDate = date;
@@ -40,7 +40,7 @@ public class UserMessage {
         ConstraintLayout messageLayout = view.findViewById(R.id.message_layout);
         messageLayout.setBackground(context.getResources().getDrawable(mUser.getBackground()));
         TextView message = view.findViewById(R.id.message_text);
-        message.setText(String.format(Locale.getDefault(), "%s: %s", mUser.getName(), mText));
+        message.setText(mText);
         TextView time = view.findViewById(R.id.message_time);
         SimpleDateFormat format = new SimpleDateFormat("HH:mm", Locale.getDefault());
         time.setText(format.format(mDate));

@@ -13,18 +13,18 @@ import java.util.Set;
  */
 
 public class Model {
-    private final Set<User> mUsers = new HashSet<>();
+    private final Set<String> mUsers = new HashSet<>();
     private String mNewMessage;
 
-    public void addUser(User newUser) {
+    public void addUser(String newUser) {
         mUsers.add(newUser);
     }
 
-    public void deleteUser(User user) {
+    public void deleteUser(String user) {
         mUsers.remove(user);
     }
 
-    public Set<User> getAllUser() {
+    public Set<String> getAllUser() {
         return Collections.unmodifiableSet(mUsers);
     }
 
