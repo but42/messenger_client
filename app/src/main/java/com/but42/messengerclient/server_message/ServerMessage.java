@@ -1,6 +1,6 @@
 package com.but42.messengerclient.server_message;
 
-import java.io.Serializable;
+import com.google.gson.annotations.SerializedName;
 
 /**
  * Created by Mikhail Kuznetsov on 13.08.2017.
@@ -8,25 +8,22 @@ import java.io.Serializable;
  * @author Mikhail Kuznetsov
  */
 
-public class ServerMessage implements Serializable {
-    private final ServerMessageType type;
-    private final String data;
-
-    public ServerMessage(ServerMessageType type) {
-        this.type = type;
-        this.data = null;
-    }
+public class ServerMessage {
+    @SerializedName("type")
+    private ServerMessageType mType;
+    @SerializedName("data")
+    private String mData;
 
     public ServerMessage(ServerMessageType type, String data) {
-        this.type = type;
-        this.data = data;
+        this.mType = type;
+        this.mData = data;
     }
 
     public ServerMessageType getType() {
-        return type;
+        return mType;
     }
 
     public String getData() {
-        return data;
+        return mData;
     }
 }
