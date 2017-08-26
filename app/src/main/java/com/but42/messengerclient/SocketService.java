@@ -8,9 +8,6 @@ import android.os.HandlerThread;
 import android.os.IBinder;
 import android.os.Looper;
 import android.os.Message;
-import android.os.Messenger;
-import android.os.ResultReceiver;
-import android.support.annotation.IntDef;
 import android.support.annotation.Nullable;
 import android.util.Log;
 
@@ -22,29 +19,37 @@ import java.io.IOException;
 import java.net.InetAddress;
 import java.net.Socket;
 
+import io.reactivex.BackpressureStrategy;
+import io.reactivex.Flowable;
+import io.reactivex.FlowableEmitter;
+import io.reactivex.FlowableOnSubscribe;
+import io.reactivex.annotations.NonNull;
+import io.reactivex.disposables.Disposable;
+import io.reactivex.schedulers.Schedulers;
+import io.reactivex.subscribers.DisposableSubscriber;
+
 /**
  * Created by but on 26.08.2017.
  */
 
-public class SocketService extends Service {
+public class SocketService extends Service implements FlowableOnSubscribe<ServerMessage> {
     private static final String TAG = SocketService.class.getSimpleName();
     private static final int CONNECTION = 100;
-    public static final int SEND = 101;
+    private static final int SEND = 101;
     private static final int STOP = 102;
-    public static final String SERVER_MESSAGE = "SERVER_MESSAGE";
-    public static final String EXTRA_RECEIVER = "EXTRA_RECEIVER";
+    private static final String SERVER_MESSAGE = "SERVER_MESSAGE";
 
-    private Messenger mMessenger;
     private Handler mServiceHandler;
     private HandlerThread mMainLoopThread;
     private Connection mConnection;
-    private ResultReceiver mReceiver;
+    private FlowableEmitter<ServerMessage> mEmitter;
+    private DisposableSubscriber<ServerMessage> m;
+    private Disposable m2;
 
     @Nullable
     @Override
     public IBinder onBind(Intent intent) {
-        mReceiver = intent.getParcelableExtra(EXTRA_RECEIVER);
-        return mMessenger.getBinder();
+        return null;
     }
 
     @Override
@@ -54,7 +59,16 @@ public class SocketService extends Service {
         thread.start();
         Looper looper = thread.getLooper();
         mServiceHandler = new ServiceHandler(looper);
-        mMessenger = new Messenger(mServiceHandler);
+        Flowable<ServerMessage> flowable = Flowable.create(this, BackpressureStrategy.BUFFER);
+        m = flowable.observeOn(Schedulers.io()).subscribeWith(Model.get());
+        m2 = Model.get().getObservable().subscribe(message -> {
+            Message msg = mServiceHandler.obtainMessage(SEND);
+            Bundle bundle = new Bundle();
+            bundle.putParcelable(SocketService.SERVER_MESSAGE, message);
+            msg.setData(bundle);
+            mServiceHandler.sendMessage(msg);
+        });
+
     }
 
     @Override
@@ -68,6 +82,8 @@ public class SocketService extends Service {
     public void onDestroy() {
         super.onDestroy();
         close();
+        m.dispose();
+        m2.dispose();
     }
 
     private void close() {
@@ -79,6 +95,11 @@ public class SocketService extends Service {
         } catch (IOException e) {
             e.printStackTrace();
         }
+    }
+
+    @Override
+    public void subscribe(@NonNull FlowableEmitter<ServerMessage> e) throws Exception {
+        mEmitter = e;
     }
 
     private class ServiceHandler extends Handler {
@@ -157,21 +178,7 @@ public class SocketService extends Service {
     protected void clientMainLoop() throws IOException, ClassNotFoundException {
         while (true) {
             ServerMessage message = mConnection.receive();
-            Bundle bundle = new Bundle();
-            bundle.putString(MainActivity.DATA, message.getData());
-            switch (message.getType()) {
-                case TEXT:
-                    mReceiver.send(MainActivity.NEW_MESSAGE, bundle);
-                    break;
-                case USER_ADDED:
-                    mReceiver.send(MainActivity.ADD_NEW_USER, bundle);
-                    break;
-                case USER_REMOVED:
-                    mReceiver.send(MainActivity.REMOVE_USER, bundle);
-                    break;
-                default:
-                    throw new IOException("Unexpected MessageType");
-            }
+            mEmitter.onNext(message);
         }
     }
 

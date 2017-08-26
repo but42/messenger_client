@@ -40,10 +40,20 @@ public class UserMessage {
         ConstraintLayout messageLayout = view.findViewById(R.id.message_layout);
         messageLayout.setBackground(context.getResources().getDrawable(mUser.getBackground()));
         TextView message = view.findViewById(R.id.message_text);
-        message.setText(mText);
+        String text = mText;
+        if (mUser == UserType.OWNER) text = "Вы: " + mText;
+        message.setText(text);
         TextView time = view.findViewById(R.id.message_time);
         SimpleDateFormat format = new SimpleDateFormat("HH:mm", Locale.getDefault());
         time.setText(format.format(mDate));
         return view;
+    }
+
+    public UserType getUser() {
+        return mUser;
+    }
+
+    public String getText() {
+        return mText;
     }
 }
