@@ -1,4 +1,4 @@
-package com.but42.messengerclient.user_message;
+package com.but42.messengerclient.service.user_message;
 
 import android.content.Context;
 import android.support.constraint.ConstraintLayout;
@@ -20,13 +20,21 @@ import java.util.Locale;
  */
 
 public class UserMessage {
-    private UserType mUser;
+    private User mUser;
     private String mText;
     private Date mDate;
 
-    public UserMessage(UserType user, String text, Date date) {
+    public UserMessage(User user, String text, Date date) {
         mUser = user;
         mText = text;
+        mDate = date;
+    }
+
+    public UserMessage(String text, Date date) {
+        String[] split = text.split(":");
+        UserType type = !split[0].equals(User.getOwnerName()) ? UserType.OTHER : UserType.OWNER;
+        mUser = new User(split[0], type);
+        mText = split[1];
         mDate = date;
     }
 
@@ -40,17 +48,19 @@ public class UserMessage {
         ConstraintLayout messageLayout = view.findViewById(R.id.message_layout);
         messageLayout.setBackground(context.getResources().getDrawable(mUser.getBackground()));
         TextView message = view.findViewById(R.id.message_text);
-        String text = mText;
-        if (mUser == UserType.OWNER) text = "Вы: " + mText;
-        message.setText(text);
+        StringBuilder text = new StringBuilder();
+        if (mUser.getUserType() == UserType.OWNER) text.append("Вы");
+        else text.append(mUser.getName());
+        text.append(": ").append(mText);
+        message.setText(text.toString());
         TextView time = view.findViewById(R.id.message_time);
         SimpleDateFormat format = new SimpleDateFormat("HH:mm", Locale.getDefault());
         time.setText(format.format(mDate));
         return view;
     }
 
-    public UserType getUser() {
-        return mUser;
+    public UserType getUserType() {
+        return mUser.getUserType();
     }
 
     public String getText() {

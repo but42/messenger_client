@@ -1,12 +1,7 @@
-package com.but42.messengerclient;
+package com.but42.messengerclient.ui;
 
 import android.content.ComponentName;
 import android.content.Intent;
-import android.content.ServiceConnection;
-import android.os.IBinder;
-import android.os.Message;
-import android.os.Messenger;
-import android.os.RemoteException;
 import android.support.v7.app.AlertDialog;
 import android.support.v7.app.AppCompatActivity;
 import android.os.Bundle;
@@ -15,10 +10,14 @@ import android.widget.LinearLayout;
 import android.widget.ScrollView;
 import android.widget.TextView;
 
-import com.but42.messengerclient.server_message.ServerMessage;
-import com.but42.messengerclient.server_message.ServerMessageType;
-import com.but42.messengerclient.user_message.UserMessage;
-import com.but42.messengerclient.user_message.UserType;
+import com.but42.messengerclient.R;
+import com.but42.messengerclient.service.SocketService;
+import com.but42.messengerclient.service.repositories.MessageRepository;
+import com.but42.messengerclient.service.repositories.UserRepository;
+import com.but42.messengerclient.service.user_message.User;
+import com.but42.messengerclient.service.user_message.UserMessage;
+import com.but42.messengerclient.service.user_message.UserType;
+import com.but42.messengerclient.ui.module.MainActivityPresenter;
 
 import java.util.Date;
 import java.util.Locale;
@@ -28,14 +27,12 @@ import butterknife.ButterKnife;
 import butterknife.OnClick;
 import butterknife.OnTextChanged;
 import io.reactivex.disposables.Disposable;
-import io.reactivex.functions.Consumer;
-import io.reactivex.subscribers.DisposableSubscriber;
 
 public class MainActivity extends AppCompatActivity {
     private static final String TAG = "Main";
 
     private String mText;
-    private Disposable mSubscriber;
+    private MainActivityPresenter mPresenter;
 
     @BindView(R.id.message_container) LinearLayout mMessageContainer;
     @BindView(R.id.editText) EditText mEditText;
@@ -49,25 +46,27 @@ public class MainActivity extends AppCompatActivity {
         ButterKnife.bind(this);
         Intent intent = new Intent(this, SocketService.class);
         startService(intent);
+        mPresenter = new MainActivityPresenter(new MessageRepository(), new UserRepository());
+        mPresenter.setMainActivity(this);
     }
 
     @Override
     protected void onResume() {
         super.onResume();
-        notifyChanges();
-        mSubscriber = Model.get().getFlowable().subscribe(s -> notifyChanges());
+        notifyUI();
+        mPresenter.subscribe();
     }
 
     @Override
     protected void onPause() {
         super.onPause();
-        mSubscriber.dispose();
+        mPresenter.dispose();
     }
 
     @OnClick(R.id.button)
     void onClick() {
-        UserMessage message = new UserMessage(UserType.OWNER, mText, new Date());
-        Model.get().addMessage(message);
+        UserMessage message = new UserMessage(new User(User.getOwnerName(), UserType.OWNER), mText, new Date());
+        mPresenter.addMessage(message);
         mText = "";
         mEditText.setText(mText);
     }
@@ -81,21 +80,27 @@ public class MainActivity extends AppCompatActivity {
     void onCountUsers() {
         AlertDialog.Builder builder = new AlertDialog.Builder(this);
         StringBuilder stringBuilder = new StringBuilder();
-        for (String string : Model.get().getAllUser()) {
-            stringBuilder.append(string).append("\n");
+        for (User user : mPresenter.getAllUser()) {
+            stringBuilder.append(user.getName()).append("\n");
         }
         builder.setMessage(stringBuilder.toString()).show();
     }
 
-    public void notifyChanges() {
-        runOnUiThread(() -> {
-            mTextViewCountUsers.setText(String.format(Locale.getDefault(),
-                    "Число пользователей: %d",
-                    Model.get().getAllUser().size()));
-            mMessageContainer.removeAllViews();
-            for (UserMessage message : Model.get().getMessages())
-                mMessageContainer.addView(message.getView(this));
-            mScrollView.post(() -> mScrollView.fullScroll(ScrollView.FOCUS_DOWN));
-        });
+    private void notifyUI() {
+        notifyUsers();
+        notifyMessages();
+    }
+
+    public void notifyUsers() {
+        mTextViewCountUsers.setText(String.format(Locale.getDefault(),
+                "Число пользователей: %d",
+                mPresenter.getAllUser().size()));
+    }
+
+    public void notifyMessages() {
+        mMessageContainer.removeAllViews();
+        for (UserMessage message : mPresenter.getMessages())
+            mMessageContainer.addView(message.getView(this));
+        mScrollView.post(() -> mScrollView.fullScroll(ScrollView.FOCUS_DOWN));
     }
 }

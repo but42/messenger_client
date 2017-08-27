@@ -1,4 +1,4 @@
-package com.but42.messengerclient;
+package com.but42.messengerclient.service;
 
 import android.app.Service;
 import android.content.Intent;
@@ -11,22 +11,25 @@ import android.os.Message;
 import android.support.annotation.Nullable;
 import android.util.Log;
 
-import com.but42.messengerclient.server_message.Connection;
-import com.but42.messengerclient.server_message.ServerMessage;
-import com.but42.messengerclient.server_message.ServerMessageType;
+import com.but42.messengerclient.service.user_message.User;
+import com.but42.messengerclient.service.user_message.UserMessage;
+import com.but42.messengerclient.service.server_message.Connection;
+import com.but42.messengerclient.service.server_message.ServerMessage;
+import com.but42.messengerclient.service.server_message.ServerMessageType;
 
 import java.io.IOException;
 import java.net.InetAddress;
+import java.net.ServerSocket;
 import java.net.Socket;
+import java.util.ArrayList;
+import java.util.List;
 
 import io.reactivex.BackpressureStrategy;
 import io.reactivex.Flowable;
 import io.reactivex.FlowableEmitter;
 import io.reactivex.FlowableOnSubscribe;
 import io.reactivex.annotations.NonNull;
-import io.reactivex.disposables.Disposable;
 import io.reactivex.schedulers.Schedulers;
-import io.reactivex.subscribers.DisposableSubscriber;
 
 /**
  * Created by but on 26.08.2017.
@@ -39,12 +42,11 @@ public class SocketService extends Service implements FlowableOnSubscribe<Server
     private static final int STOP = 102;
     private static final String SERVER_MESSAGE = "SERVER_MESSAGE";
 
+    private static SocketService sService;
     private Handler mServiceHandler;
     private HandlerThread mMainLoopThread;
     private Connection mConnection;
-    private FlowableEmitter<ServerMessage> mEmitter;
-    private DisposableSubscriber<ServerMessage> m;
-    private Disposable m2;
+    private List<FlowableEmitter<ServerMessage>> mEmitters = new ArrayList<>();
 
     @Nullable
     @Override
@@ -59,16 +61,22 @@ public class SocketService extends Service implements FlowableOnSubscribe<Server
         thread.start();
         Looper looper = thread.getLooper();
         mServiceHandler = new ServiceHandler(looper);
-        Flowable<ServerMessage> flowable = Flowable.create(this, BackpressureStrategy.BUFFER);
-        m = flowable.observeOn(Schedulers.io()).subscribeWith(Model.get());
-        m2 = Model.get().getObservable().subscribe(message -> {
-            Message msg = mServiceHandler.obtainMessage(SEND);
-            Bundle bundle = new Bundle();
-            bundle.putParcelable(SocketService.SERVER_MESSAGE, message);
-            msg.setData(bundle);
-            mServiceHandler.sendMessage(msg);
-        });
+        mEmitters = sService.mEmitters;
+        sService = this;
+    }
 
+    public static Flowable<ServerMessage> getFlowable() {
+        if (sService == null) sService = new SocketService();
+        return Flowable.create(sService, BackpressureStrategy.BUFFER).subscribeOn(Schedulers.io());
+    }
+
+    public static void send(UserMessage message) {
+        Message msg = sService.mServiceHandler.obtainMessage(SEND);
+        Bundle bundle = new Bundle();
+        bundle.putParcelable(SocketService.SERVER_MESSAGE,
+                new ServerMessage(ServerMessageType.TEXT, message.getText()));
+        msg.setData(bundle);
+        sService.mServiceHandler.sendMessage(msg);
     }
 
     @Override
@@ -82,8 +90,7 @@ public class SocketService extends Service implements FlowableOnSubscribe<Server
     public void onDestroy() {
         super.onDestroy();
         close();
-        m.dispose();
-        m2.dispose();
+        mEmitters.forEach(FlowableEmitter::onComplete);
     }
 
     private void close() {
@@ -99,7 +106,7 @@ public class SocketService extends Service implements FlowableOnSubscribe<Server
 
     @Override
     public void subscribe(@NonNull FlowableEmitter<ServerMessage> e) throws Exception {
-        mEmitter = e;
+        mEmitters.add(e);
     }
 
     private class ServiceHandler extends Handler {
@@ -162,7 +169,7 @@ public class SocketService extends Service implements FlowableOnSubscribe<Server
                 case NAME_REQUEST:
                     Message msg = mServiceHandler.obtainMessage(SEND);
                     Bundle bundle = new Bundle();
-                    bundle.putParcelable(SERVER_MESSAGE, new ServerMessage(ServerMessageType.USER_NAME, getUserName()));
+                    bundle.putParcelable(SERVER_MESSAGE, new ServerMessage(ServerMessageType.USER_NAME, User.getOwnerName()));
                     msg.setData(bundle);
                     mServiceHandler.sendMessage(msg);
                     break;
@@ -178,11 +185,7 @@ public class SocketService extends Service implements FlowableOnSubscribe<Server
     protected void clientMainLoop() throws IOException, ClassNotFoundException {
         while (true) {
             ServerMessage message = mConnection.receive();
-            mEmitter.onNext(message);
+            for (FlowableEmitter<ServerMessage> emitter : mEmitters) emitter.onNext(message);
         }
-    }
-
-    private String getUserName() {
-        return "Ted";
     }
 }

@@ -1,4 +1,4 @@
-package com.but42.messengerclient.server_message;
+package com.but42.messengerclient.service.server_message;
 
 import android.os.Parcel;
 import android.os.Parcelable;

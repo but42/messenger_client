@@ -1,4 +1,4 @@
-package com.but42.messengerclient.server_message;
+package com.but42.messengerclient.service.server_message;
 
 /**
  * Created by Mikhail Kuznetsov on 13.08.2017.
