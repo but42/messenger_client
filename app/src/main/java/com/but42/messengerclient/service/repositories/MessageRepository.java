@@ -1,5 +1,6 @@
 package com.but42.messengerclient.service.repositories;
 
+import com.but42.messengerclient.service.ApiService;
 import com.but42.messengerclient.service.SocketService;
 import com.but42.messengerclient.service.server_message.ServerMessageType;
 import com.but42.messengerclient.service.user_message.UserMessage;
@@ -22,17 +23,26 @@ import io.reactivex.annotations.NonNull;
  */
 
 public class MessageRepository implements Repository<UserMessage>, FlowableOnSubscribe<UserMessage> {
+    private ApiService mService;
     private List<UserMessage> mMessages;
     private FlowableEmitter<UserMessage> mEmitter;
+    private Flowable<UserMessage> mFlowable;
 
-    public MessageRepository() {
+    public MessageRepository(ApiService service) {
+        mService = service;
         mMessages = new ArrayList<>();
+        mFlowable = mService.getFlowable()
+                .filter(serverMessage -> serverMessage.getType() == ServerMessageType.TEXT)
+                .flatMap(serverMessage -> Flowable.just(new UserMessage(serverMessage.getData(), new Date())))
+                .filter(message -> message.getUserType() != UserType.OWNER)
+                .mergeWith(Flowable.create(this, BackpressureStrategy.BUFFER));
+        mFlowable.subscribe(message -> mMessages.add(message));
     }
 
     @Override
     public void add(UserMessage item) {
         mMessages.add(item);
-        SocketService.send(item);
+        mService.send(item);
         mEmitter.onNext(item);
     }
 
@@ -43,12 +53,7 @@ public class MessageRepository implements Repository<UserMessage>, FlowableOnSub
 
     @Override
     public Flowable<UserMessage> getFlowable() {
-        return SocketService.getFlowable()
-                .filter(serverMessage -> serverMessage.getType() == ServerMessageType.TEXT)
-                .flatMap(serverMessage -> Flowable.just(new UserMessage(serverMessage.getData(), new Date())))
-                .filter(message -> message.getUserType() != UserType.OWNER)
-                .doOnNext(message -> mMessages.add(message))
-                .mergeWith(Flowable.create(this, BackpressureStrategy.BUFFER));
+        return mFlowable;
     }
 
     @Override

@@ -43,7 +43,6 @@ public class MainActivityPresenter  {
     public MainActivityPresenter(MessageRepository messageRepository, UserRepository userRepository) {
         mMessageRepository = messageRepository;
         mUserRepository = userRepository;
-        mCompositeDisposable = new CompositeDisposable();
     }
 
     public void setMainActivity(MainActivity mainActivity) {
@@ -63,6 +62,7 @@ public class MainActivityPresenter  {
     }
 
     public void subscribe() {
+        mCompositeDisposable = new CompositeDisposable();
         mCompositeDisposable.add(mMessageRepository.getFlowable()
                 .observeOn(AndroidSchedulers.mainThread())
                 .subscribe(message -> mMainActivity.notifyMessages()));

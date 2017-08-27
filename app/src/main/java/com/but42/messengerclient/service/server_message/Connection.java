@@ -16,28 +16,34 @@ import java.net.Socket;
  */
 
 public class Connection {
-    private final Socket socket;
-    private final PrintWriter out;
-    private final BufferedReader in;
+    private static Connection sConnection;
+    private final Socket mSocket;
+    private final PrintWriter mOut;
+    private final BufferedReader mIn;
 
     public Connection(Socket socket) throws IOException {
-        this.socket = socket;
-        this.out = new PrintWriter(socket.getOutputStream(), true);
-        this.in = new BufferedReader(new InputStreamReader(socket.getInputStream()));
+        this.mSocket = socket;
+        this.mOut = new PrintWriter(socket.getOutputStream(), true);
+        this.mIn = new BufferedReader(new InputStreamReader(socket.getInputStream()));
+        sConnection = this;
+    }
+
+    public static Connection getConnection() {
+        return sConnection;
     }
 
     public void send(ServerMessage message) throws IOException {
-        synchronized (out) {
+        synchronized (mOut) {
             GsonBuilder builder = new GsonBuilder();
             Gson gson = builder.create();
-            out.println(gson.toJson(message));
-            out.flush();
+            mOut.println(gson.toJson(message));
+            mOut.flush();
         }
     }
 
     public ServerMessage receive() throws IOException, ClassNotFoundException {
-        synchronized (in) {
-            String string = in.readLine();
+        synchronized (mIn) {
+            String string = mIn.readLine();
             GsonBuilder builder = new GsonBuilder();
             Gson gson = builder.create();
             return gson.fromJson(string, ServerMessage.class);
@@ -45,8 +51,8 @@ public class Connection {
     }
 
     public void close() throws IOException {
-        socket.close();
-        out.close();
-        in.close();
+        mSocket.close();
+        mOut.close();
+        mIn.close();
     }
 }

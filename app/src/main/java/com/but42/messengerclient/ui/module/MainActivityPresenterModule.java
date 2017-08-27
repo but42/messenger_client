@@ -1,5 +1,6 @@
 package com.but42.messengerclient.ui.module;
 
+import com.but42.messengerclient.service.ApiService;
 import com.but42.messengerclient.service.repositories.MessageRepository;
 import com.but42.messengerclient.service.repositories.UserRepository;
 
@@ -17,6 +18,6 @@ public class MainActivityPresenterModule {
 
     @Provides
     MainActivityPresenter providesPresenter() {
-        return new MainActivityPresenter(new MessageRepository(), new UserRepository());
+        return new MainActivityPresenter(new MessageRepository(new ApiService()), new UserRepository(new ApiService()));
     }
 }

@@ -8,6 +8,7 @@ import android.os.HandlerThread;
 import android.os.IBinder;
 import android.os.Looper;
 import android.os.Message;
+import android.os.ResultReceiver;
 import android.support.annotation.Nullable;
 import android.util.Log;
 
@@ -19,7 +20,6 @@ import com.but42.messengerclient.service.server_message.ServerMessageType;
 
 import java.io.IOException;
 import java.net.InetAddress;
-import java.net.ServerSocket;
 import java.net.Socket;
 import java.util.ArrayList;
 import java.util.List;
@@ -35,18 +35,16 @@ import io.reactivex.schedulers.Schedulers;
  * Created by but on 26.08.2017.
  */
 
-public class SocketService extends Service implements FlowableOnSubscribe<ServerMessage> {
+public class SocketService extends Service {
     private static final String TAG = SocketService.class.getSimpleName();
     private static final int CONNECTION = 100;
-    private static final int SEND = 101;
     private static final int STOP = 102;
-    private static final String SERVER_MESSAGE = "SERVER_MESSAGE";
+    public static final String EXTRA_RECEIVER = "EXTRA_RECEIVER";
 
-    private static SocketService sService;
     private Handler mServiceHandler;
+    private ResultReceiver mReceiver;
     private HandlerThread mMainLoopThread;
     private Connection mConnection;
-    private List<FlowableEmitter<ServerMessage>> mEmitters = new ArrayList<>();
 
     @Nullable
     @Override
@@ -61,28 +59,13 @@ public class SocketService extends Service implements FlowableOnSubscribe<Server
         thread.start();
         Looper looper = thread.getLooper();
         mServiceHandler = new ServiceHandler(looper);
-        mEmitters = sService.mEmitters;
-        sService = this;
-    }
-
-    public static Flowable<ServerMessage> getFlowable() {
-        if (sService == null) sService = new SocketService();
-        return Flowable.create(sService, BackpressureStrategy.BUFFER).subscribeOn(Schedulers.io());
-    }
-
-    public static void send(UserMessage message) {
-        Message msg = sService.mServiceHandler.obtainMessage(SEND);
-        Bundle bundle = new Bundle();
-        bundle.putParcelable(SocketService.SERVER_MESSAGE,
-                new ServerMessage(ServerMessageType.TEXT, message.getText()));
-        msg.setData(bundle);
-        sService.mServiceHandler.sendMessage(msg);
     }
 
     @Override
     public int onStartCommand(Intent intent, int flags, int startId) {
         Message message = mServiceHandler.obtainMessage(CONNECTION);
         mServiceHandler.sendMessage(message);
+        mReceiver = intent.getParcelableExtra(EXTRA_RECEIVER);
         return START_NOT_STICKY;
     }
 
@@ -90,23 +73,6 @@ public class SocketService extends Service implements FlowableOnSubscribe<Server
     public void onDestroy() {
         super.onDestroy();
         close();
-        mEmitters.forEach(FlowableEmitter::onComplete);
-    }
-
-    private void close() {
-        if (!mMainLoopThread.isInterrupted()) {
-            mMainLoopThread.interrupt();
-        }
-        try {
-            mConnection.close();
-        } catch (IOException e) {
-            e.printStackTrace();
-        }
-    }
-
-    @Override
-    public void subscribe(@NonNull FlowableEmitter<ServerMessage> e) throws Exception {
-        mEmitters.add(e);
     }
 
     private class ServiceHandler extends Handler {
@@ -121,16 +87,6 @@ public class SocketService extends Service implements FlowableOnSubscribe<Server
                     mMainLoopThread = new MainLoopThread();
                     mMainLoopThread.start();
                     break;
-                case SEND:
-                    ServerMessage message = msg.getData().getParcelable(SERVER_MESSAGE);
-                    new Thread(() -> {
-                        try {
-                            mConnection.send(message);
-                        } catch (IOException e) {
-                            e.printStackTrace();
-                        }
-                    }).start();
-                    break;
                 case STOP:
                     close();
                     stopSelf();
@@ -139,9 +95,20 @@ public class SocketService extends Service implements FlowableOnSubscribe<Server
         }
     }
 
-    private class MainLoopThread extends HandlerThread {
+    private void close() {
+        if (!mMainLoopThread.isInterrupted()) {
+            mMainLoopThread.interrupt();
+        }
+        try {
+            mConnection.close();
+        } catch (IOException e) {
+            e.printStackTrace();
+        }
+    }
 
-        private MainLoopThread() {
+    public class MainLoopThread extends HandlerThread {
+
+        public MainLoopThread() {
             super("MainLoopThread");
         }
 
@@ -154,38 +121,36 @@ public class SocketService extends Service implements FlowableOnSubscribe<Server
                     mConnection = new Connection(socket);
                     Log.i(TAG, "Создался сокет");
                     clientHandshake();
-                    clientMainLoop();
+                    while (true) {
+                        ServerMessage message = mConnection.receive();
+                        Bundle bundle = new Bundle();
+                        bundle.putParcelable(ServiceReceiver.SERVER_MESSAGE, message);
+                        mReceiver.send(ServiceReceiver.MESSAGE, bundle);
+                    }
                 } catch (IOException | ClassNotFoundException e) {
                     e.printStackTrace();
                 }
             }
         }
-    }
 
-    private void clientHandshake() throws IOException, ClassNotFoundException {
-        while (true) {
-            ServerMessage message = mConnection.receive();
-            switch (message.getType()) {
-                case NAME_REQUEST:
-                    Message msg = mServiceHandler.obtainMessage(SEND);
-                    Bundle bundle = new Bundle();
-                    bundle.putParcelable(SERVER_MESSAGE, new ServerMessage(ServerMessageType.USER_NAME, User.getOwnerName()));
-                    msg.setData(bundle);
-                    mServiceHandler.sendMessage(msg);
-                    break;
-                case NAME_ACCEPTED:
-                    Log.d(TAG, "NAME_ACCEPTED");
-                    return;
-                default:
-                    throw new IOException("Unexpected MessageType");
+        private void clientHandshake() throws IOException, ClassNotFoundException {
+            while (true) {
+                ServerMessage message = mConnection.receive();
+                switch (message.getType()) {
+                    case NAME_REQUEST:
+                        try {
+                            mConnection.send(new ServerMessage(ServerMessageType.USER_NAME, User.getOwnerName()));
+                        } catch (IOException e) {
+                            e.printStackTrace();
+                        }
+                        break;
+                    case NAME_ACCEPTED:
+                        Log.d(TAG, "NAME_ACCEPTED");
+                        return;
+                    default:
+                        throw new IOException("Unexpected MessageType");
+                }
             }
-        }
-    }
-
-    protected void clientMainLoop() throws IOException, ClassNotFoundException {
-        while (true) {
-            ServerMessage message = mConnection.receive();
-            for (FlowableEmitter<ServerMessage> emitter : mEmitters) emitter.onNext(message);
         }
     }
 }

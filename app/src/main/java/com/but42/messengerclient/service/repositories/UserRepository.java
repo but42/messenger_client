@@ -1,5 +1,6 @@
 package com.but42.messengerclient.service.repositories;
 
+import com.but42.messengerclient.service.ApiService;
 import com.but42.messengerclient.service.SocketService;
 import com.but42.messengerclient.service.server_message.ServerMessageType;
 import com.but42.messengerclient.service.user_message.User;
@@ -16,10 +17,27 @@ import io.reactivex.Flowable;
  */
 
 public class UserRepository implements Repository<User> {
+    private ApiService mService;
     private List<User> mUsers;
+    private Flowable<User> mFlowable;
 
-    public UserRepository() {
+    public UserRepository(ApiService service) {
+        mService = service;
         mUsers = new ArrayList<>();
+        mFlowable = mService.getFlowable()
+                .filter(serverMessage -> serverMessage.getType() == ServerMessageType.USER_ADDED
+                        || serverMessage.getType() == ServerMessageType.USER_REMOVED)
+                .flatMap(serverMessage -> Flowable.just(new User(serverMessage.getData(), serverMessage.getType())));
+        mFlowable.subscribe(user -> {
+            switch (user.getServerType()) {
+                case USER_ADDED:
+                    mUsers.add(user);
+                    break;
+                case USER_REMOVED:
+                    mUsers.remove(user);
+                    break;
+            }
+        });
     }
 
     @Override
@@ -34,19 +52,6 @@ public class UserRepository implements Repository<User> {
 
     @Override
     public Flowable<User> getFlowable() {
-        return SocketService.getFlowable()
-                .filter(serverMessage -> serverMessage.getType() == ServerMessageType.USER_ADDED
-                        || serverMessage.getType() == ServerMessageType.USER_REMOVED)
-                .flatMap(serverMessage -> Flowable.just(new User(serverMessage.getData(), serverMessage.getType())))
-                .doOnNext(user -> {
-                    switch (user.getServerType()) {
-                        case USER_ADDED:
-                            mUsers.add(user);
-                            break;
-                        case USER_REMOVED:
-                            mUsers.remove(user);
-                            break;
-                    }
-                });
+        return mFlowable;
     }
 }

@@ -1,6 +1,5 @@
 package com.but42.messengerclient.ui;
 
-import android.content.ComponentName;
 import android.content.Intent;
 import android.support.v7.app.AlertDialog;
 import android.support.v7.app.AppCompatActivity;
@@ -11,6 +10,8 @@ import android.widget.ScrollView;
 import android.widget.TextView;
 
 import com.but42.messengerclient.R;
+import com.but42.messengerclient.service.ApiService;
+import com.but42.messengerclient.service.ServiceReceiver;
 import com.but42.messengerclient.service.SocketService;
 import com.but42.messengerclient.service.repositories.MessageRepository;
 import com.but42.messengerclient.service.repositories.UserRepository;
@@ -26,7 +27,6 @@ import butterknife.BindView;
 import butterknife.ButterKnife;
 import butterknife.OnClick;
 import butterknife.OnTextChanged;
-import io.reactivex.disposables.Disposable;
 
 public class MainActivity extends AppCompatActivity {
     private static final String TAG = "Main";
@@ -44,9 +44,12 @@ public class MainActivity extends AppCompatActivity {
         super.onCreate(savedInstanceState);
         setContentView(R.layout.activity_main);
         ButterKnife.bind(this);
+        ApiService service = new ApiService();
+        ServiceReceiver receiver = new ServiceReceiver(service);
         Intent intent = new Intent(this, SocketService.class);
+        intent.putExtra(SocketService.EXTRA_RECEIVER, receiver);
         startService(intent);
-        mPresenter = new MainActivityPresenter(new MessageRepository(), new UserRepository());
+        mPresenter = new MainActivityPresenter(new MessageRepository(service), new UserRepository(service));
         mPresenter.setMainActivity(this);
     }
 
