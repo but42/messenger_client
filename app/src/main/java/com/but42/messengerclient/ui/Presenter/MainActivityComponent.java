@@ -1,7 +1,6 @@
-package com.but42.messengerclient.ui.Companent;
+package com.but42.messengerclient.ui.Presenter;
 
 import com.but42.messengerclient.ui.MainActivity;
-import com.but42.messengerclient.ui.module.MainActivityPresenterModule;
 
 import dagger.Subcomponent;
 
@@ -11,6 +10,7 @@ import dagger.Subcomponent;
  * @author Mikhail Kuznetsov
  */
 
+@ActivityScope
 @Subcomponent(modules = {MainActivityPresenterModule.class})
 public interface MainActivityComponent {
     void injectMainActivity(MainActivity mainActivity);

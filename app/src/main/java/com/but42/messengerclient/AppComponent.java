@@ -1,7 +1,10 @@
 package com.but42.messengerclient;
 
 import com.but42.messengerclient.service.ApiModule;
-import com.but42.messengerclient.ui.Companent.MainActivityComponent;
+import com.but42.messengerclient.service.repositories.RepositoryModule;
+import com.but42.messengerclient.ui.Presenter.MainActivityComponent;
+
+import javax.inject.Singleton;
 
 import dagger.Component;
 
@@ -11,7 +14,8 @@ import dagger.Component;
  * @author Mikhail Kuznetsov
  */
 
-@Component(modules = {ApiModule.class})
+@Singleton
+@Component(modules = {AppModule.class, ApiModule.class, RepositoryModule.class})
 public interface AppComponent {
     MainActivityComponent createMainActivityComponent();
 }

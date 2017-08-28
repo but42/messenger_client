@@ -1,6 +1,5 @@
-package com.but42.messengerclient.ui.module;
+package com.but42.messengerclient.ui.Presenter;
 
-import com.but42.messengerclient.service.ApiService;
 import com.but42.messengerclient.service.repositories.MessageRepository;
 import com.but42.messengerclient.service.repositories.UserRepository;
 
@@ -16,8 +15,9 @@ import dagger.Provides;
 @Module
 public class MainActivityPresenterModule {
 
+    @ActivityScope
     @Provides
-    MainActivityPresenter providesPresenter() {
-        return new MainActivityPresenter(new MessageRepository(new ApiService()), new UserRepository(new ApiService()));
+    MainActivityPresenter providesPresenter(MessageRepository messageRepository, UserRepository userRepository) {
+        return new MainActivityPresenter(messageRepository, userRepository);
     }
 }
