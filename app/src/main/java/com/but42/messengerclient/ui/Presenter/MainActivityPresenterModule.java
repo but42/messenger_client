@@ -1,5 +1,6 @@
 package com.but42.messengerclient.ui.Presenter;
 
+import com.but42.messengerclient.app.ActivityModule;
 import com.but42.messengerclient.service.repositories.MessageRepository;
 import com.but42.messengerclient.service.repositories.UserRepository;
 
@@ -13,7 +14,7 @@ import dagger.Provides;
  */
 
 @Module
-public class MainActivityPresenterModule {
+public class MainActivityPresenterModule implements ActivityModule {
 
     @ActivityScope
     @Provides

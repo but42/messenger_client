@@ -8,8 +8,9 @@ import android.widget.LinearLayout;
 import android.widget.ScrollView;
 import android.widget.TextView;
 
-import com.but42.messengerclient.App;
+import com.but42.messengerclient.app.App;
 import com.but42.messengerclient.R;
+import com.but42.messengerclient.ui.Presenter.MainActivityComponent;
 import com.but42.messengerclient.ui.user_message.User;
 import com.but42.messengerclient.ui.user_message.UserMessage;
 import com.but42.messengerclient.ui.user_message.UserType;
@@ -41,7 +42,10 @@ public class MainActivity extends AppCompatActivity {
         super.onCreate(savedInstanceState);
         setContentView(R.layout.activity_main);
         ButterKnife.bind(this);
-        App.getComponent().createMainActivityComponent().injectMainActivity(this);
+
+        MainActivityComponent component = (MainActivityComponent) App.getApp(this)
+                .getComponentsHolder().getActivityComponent(getClass());
+        component.inject(this);
         mPresenter.setMainActivity(this);
     }
 
@@ -56,6 +60,16 @@ public class MainActivity extends AppCompatActivity {
     protected void onPause() {
         super.onPause();
         mPresenter.dispose();
+    }
+
+    @Override
+    protected void onDestroy() {
+        super.onDestroy();
+        if (isFinishing()) {
+            App.getApp(this)
+                    .getComponentsHolder()
+                    .releaseActivityComponent(getClass());
+        }
     }
 
     @OnClick(R.id.button)

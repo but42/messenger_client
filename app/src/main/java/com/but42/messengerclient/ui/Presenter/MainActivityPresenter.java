@@ -1,5 +1,7 @@
 package com.but42.messengerclient.ui.Presenter;
 
+import android.util.Log;
+
 import com.but42.messengerclient.service.repositories.MessageRepository;
 import com.but42.messengerclient.service.repositories.UserRepository;
 import com.but42.messengerclient.ui.user_message.User;

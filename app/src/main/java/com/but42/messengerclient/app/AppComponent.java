@@ -1,4 +1,4 @@
-package com.but42.messengerclient;
+package com.but42.messengerclient.app;
 
 import com.but42.messengerclient.service.ApiModule;
 import com.but42.messengerclient.service.repositories.RepositoryModule;
@@ -17,5 +17,5 @@ import dagger.Component;
 @Singleton
 @Component(modules = {AppModule.class, ApiModule.class, RepositoryModule.class})
 public interface AppComponent {
-    MainActivityComponent createMainActivityComponent();
+    void injectComponentHolder(ComponentsHolder componentsHolder);
 }

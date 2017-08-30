@@ -47,6 +47,7 @@ public class ApiService implements FlowableOnSubscribe<ServerMessage>, OnReceive
     }
 
     public void send(final UserMessage message) {
+        if (Connection.getConnection() == null) return;
         new Thread(() -> {
             try {
                 Connection.getConnection()
