@@ -1,4 +1,4 @@
-package com.but42.messengerclient;
+package com.but42.messengerclient.ui.Presenter;
 
 import java.lang.annotation.Retention;
 import java.lang.annotation.RetentionPolicy;

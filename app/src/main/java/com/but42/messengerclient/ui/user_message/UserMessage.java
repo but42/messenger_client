@@ -1,4 +1,4 @@
-package com.but42.messengerclient.service.user_message;
+package com.but42.messengerclient.ui.user_message;
 
 import android.content.Context;
 import android.support.constraint.ConstraintLayout;

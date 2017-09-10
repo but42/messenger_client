@@ -1,21 +1,14 @@
 package com.but42.messengerclient.service;
 
-import android.os.Bundle;
-import android.os.Handler;
-import android.os.HandlerThread;
-import android.os.Message;
-import android.os.ResultReceiver;
-import android.util.Log;
+import android.content.Context;
+import android.content.Intent;
 
 import com.but42.messengerclient.service.server_message.Connection;
 import com.but42.messengerclient.service.server_message.ServerMessage;
 import com.but42.messengerclient.service.server_message.ServerMessageType;
-import com.but42.messengerclient.service.user_message.User;
-import com.but42.messengerclient.service.user_message.UserMessage;
+import com.but42.messengerclient.ui.user_message.UserMessage;
 
 import java.io.IOException;
-import java.net.InetAddress;
-import java.net.Socket;
 import java.util.ArrayList;
 import java.util.List;
 
@@ -39,10 +32,14 @@ public class ApiService implements FlowableOnSubscribe<ServerMessage>, OnReceive
     private ConnectableFlowable<ServerMessage> mFlowable;
     private List<FlowableEmitter<ServerMessage>> mEmitters;
 
-    public ApiService() {
+    public ApiService(Context context) {
         mFlowable = Flowable.create(this, BackpressureStrategy.BUFFER).subscribeOn(Schedulers.io()).publish();
         mFlowable.connect();
         mEmitters = new ArrayList<>();
+        ServiceReceiver receiver = new ServiceReceiver(this);
+        Intent intent = new Intent(context, SocketService.class);
+        intent.putExtra(SocketService.EXTRA_RECEIVER, receiver);
+        context.startService(intent);
     }
 
     public Flowable<ServerMessage> getFlowable() {
@@ -50,6 +47,7 @@ public class ApiService implements FlowableOnSubscribe<ServerMessage>, OnReceive
     }
 
     public void send(final UserMessage message) {
+        if (Connection.getConnection() == null) return;
         new Thread(() -> {
             try {
                 Connection.getConnection()

@@ -1,10 +1,9 @@
 package com.but42.messengerclient.service.repositories;
 
 import com.but42.messengerclient.service.ApiService;
-import com.but42.messengerclient.service.SocketService;
 import com.but42.messengerclient.service.server_message.ServerMessageType;
-import com.but42.messengerclient.service.user_message.UserMessage;
-import com.but42.messengerclient.service.user_message.UserType;
+import com.but42.messengerclient.ui.user_message.UserMessage;
+import com.but42.messengerclient.ui.user_message.UserType;
 
 import java.util.ArrayList;
 import java.util.Date;

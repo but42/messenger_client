@@ -1,6 +1,5 @@
 package com.but42.messengerclient.ui;
 
-import android.content.Intent;
 import android.support.v7.app.AlertDialog;
 import android.support.v7.app.AppCompatActivity;
 import android.os.Bundle;
@@ -9,19 +8,18 @@ import android.widget.LinearLayout;
 import android.widget.ScrollView;
 import android.widget.TextView;
 
+import com.but42.messengerclient.app.App;
 import com.but42.messengerclient.R;
-import com.but42.messengerclient.service.ApiService;
-import com.but42.messengerclient.service.ServiceReceiver;
-import com.but42.messengerclient.service.SocketService;
-import com.but42.messengerclient.service.repositories.MessageRepository;
-import com.but42.messengerclient.service.repositories.UserRepository;
-import com.but42.messengerclient.service.user_message.User;
-import com.but42.messengerclient.service.user_message.UserMessage;
-import com.but42.messengerclient.service.user_message.UserType;
-import com.but42.messengerclient.ui.module.MainActivityPresenter;
+import com.but42.messengerclient.ui.Presenter.MainActivityComponent;
+import com.but42.messengerclient.ui.user_message.User;
+import com.but42.messengerclient.ui.user_message.UserMessage;
+import com.but42.messengerclient.ui.user_message.UserType;
+import com.but42.messengerclient.ui.Presenter.MainActivityPresenter;
 
 import java.util.Date;
 import java.util.Locale;
+
+import javax.inject.Inject;
 
 import butterknife.BindView;
 import butterknife.ButterKnife;
@@ -32,7 +30,7 @@ public class MainActivity extends AppCompatActivity {
     private static final String TAG = "Main";
 
     private String mText;
-    private MainActivityPresenter mPresenter;
+    @Inject MainActivityPresenter mPresenter;
 
     @BindView(R.id.message_container) LinearLayout mMessageContainer;
     @BindView(R.id.editText) EditText mEditText;
@@ -44,12 +42,10 @@ public class MainActivity extends AppCompatActivity {
         super.onCreate(savedInstanceState);
         setContentView(R.layout.activity_main);
         ButterKnife.bind(this);
-        ApiService service = new ApiService();
-        ServiceReceiver receiver = new ServiceReceiver(service);
-        Intent intent = new Intent(this, SocketService.class);
-        intent.putExtra(SocketService.EXTRA_RECEIVER, receiver);
-        startService(intent);
-        mPresenter = new MainActivityPresenter(new MessageRepository(service), new UserRepository(service));
+
+        MainActivityComponent component = (MainActivityComponent) App.getApp(this)
+                .getComponentsHolder().getActivityComponent(getClass());
+        component.inject(this);
         mPresenter.setMainActivity(this);
     }
 
@@ -64,6 +60,16 @@ public class MainActivity extends AppCompatActivity {
     protected void onPause() {
         super.onPause();
         mPresenter.dispose();
+    }
+
+    @Override
+    protected void onDestroy() {
+        super.onDestroy();
+        if (isFinishing()) {
+            App.getApp(this)
+                    .getComponentsHolder()
+                    .releaseActivityComponent(getClass());
+        }
     }
 
     @OnClick(R.id.button)

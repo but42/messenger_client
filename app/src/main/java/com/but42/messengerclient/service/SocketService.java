@@ -12,8 +12,7 @@ import android.os.ResultReceiver;
 import android.support.annotation.Nullable;
 import android.util.Log;
 
-import com.but42.messengerclient.service.user_message.User;
-import com.but42.messengerclient.service.user_message.UserMessage;
+import com.but42.messengerclient.ui.user_message.User;
 import com.but42.messengerclient.service.server_message.Connection;
 import com.but42.messengerclient.service.server_message.ServerMessage;
 import com.but42.messengerclient.service.server_message.ServerMessageType;
@@ -21,15 +20,6 @@ import com.but42.messengerclient.service.server_message.ServerMessageType;
 import java.io.IOException;
 import java.net.InetAddress;
 import java.net.Socket;
-import java.util.ArrayList;
-import java.util.List;
-
-import io.reactivex.BackpressureStrategy;
-import io.reactivex.Flowable;
-import io.reactivex.FlowableEmitter;
-import io.reactivex.FlowableOnSubscribe;
-import io.reactivex.annotations.NonNull;
-import io.reactivex.schedulers.Schedulers;
 
 /**
  * Created by but on 26.08.2017.
@@ -55,6 +45,7 @@ public class SocketService extends Service {
     @Override
     public void onCreate() {
         super.onCreate();
+        Log.d(TAG, "onCreate");
         HandlerThread thread = new HandlerThread("ServiceHandlerThread");
         thread.start();
         Looper looper = thread.getLooper();
@@ -63,6 +54,7 @@ public class SocketService extends Service {
 
     @Override
     public int onStartCommand(Intent intent, int flags, int startId) {
+        Log.d(TAG, "onStartCommand");
         Message message = mServiceHandler.obtainMessage(CONNECTION);
         mServiceHandler.sendMessage(message);
         mReceiver = intent.getParcelableExtra(EXTRA_RECEIVER);
@@ -129,6 +121,11 @@ public class SocketService extends Service {
                     }
                 } catch (IOException | ClassNotFoundException e) {
                     e.printStackTrace();
+                    try {
+                        Thread.sleep(10000);
+                    } catch (InterruptedException e1) {
+                        e1.printStackTrace();
+                    }
                 }
             }
         }
